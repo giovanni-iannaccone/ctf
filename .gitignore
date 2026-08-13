@@ -1,0 +1,9 @@
+.gdb_history
+cc/
+ghidra/
+kpwn/
+pwn.college/
+tools/cwe_checker/
+tools/pwndbg/
+tools/spwn/
+trx/
