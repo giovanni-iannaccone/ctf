@@ -1,6 +1,6 @@
 from pwn import *
 
-os.chdir("./chall")
+# os.chdir("./chall")
 
 exe = ELF("./painter")
 libc = ELF("./libc.so.6")

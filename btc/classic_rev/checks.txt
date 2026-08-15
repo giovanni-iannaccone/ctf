@@ -1,7 +1,0 @@
-- length = 25
-- is made of uppercase letters or digits
-- 1st is digit 5th is uppercase
-- sum of the second block is odd
-- third block is made by the sum of the first two
-- 15 is the xor of 5th and 10th + 13 % 26 + 10, same for 19 which is xor of 9th and 14th
-- last block is hash of previouses

