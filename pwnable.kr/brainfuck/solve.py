@@ -5,16 +5,23 @@ libc = ELF("./libc.so.6")
 
 context.binary = exe
 
+HOST = "pwnable.kr"
+PORT = 10017
+
 gdbscript = """
 set follow-fork-mode child
 """
 
-args.DEBUG = True
+# args.LOCAL = True
+# args.DEBUG = True
 
 def conn():
-    r = process([exe.path])
-    if args.DEBUG:
-        gdb.attach(r, gdbscript=gdbscript)
+    if args.LOCAL:
+        r = process(exe.path)
+        if args.DEBUG:
+            gdb.attach(r, gdbscript=gdbscript)
+    else:
+        r = remote(HOST, PORT)
 
     return r
 
